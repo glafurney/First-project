@@ -122,14 +122,58 @@
     </div>
   </section>
 
+  <section class="rc-section" id="week">
+    <h2 class="rc-h2">This week in review</h2>
+    <div class="rc-tiles">
+      <div class="rc-tile">
+        <span class="rc-tile-label">People you talked to</span>
+        <span class="rc-tile-num dash-skeleton" data-draw="w-contacted" data-source="week" data-field="contacted" data-row="0">—</span>
+        <span class="rc-tile-note">Last 7 days, by Last contact. Week before: <b data-draw="w-prev" data-source="week" data-field="contacted_prev" data-row="0">—</b></span>
+      </div>
+      <div class="rc-tile">
+        <span class="rc-tile-label">Follow-ups that slipped</span>
+        <span class="rc-tile-num rc-bad dash-skeleton" data-draw="w-slipped" data-source="week" data-field="slipped" data-row="0">—</span>
+        <span class="rc-tile-note">Follow-up date passed with no update</span>
+      </div>
+      <div class="rc-tile">
+        <span class="rc-tile-label">Milestones due next 7 days</span>
+        <span class="rc-tile-num dash-skeleton" data-draw="w-ms" data-source="week" data-field="milestones_next" data-row="0">—</span>
+        <span class="rc-tile-note">Open RDI milestones coming up</span>
+      </div>
+    </div>
+    <div class="rc-grid">
+      <div class="rc-card" id="week-contacts">
+        <h3 class="rc-card-title">Conversations this week</h3>
+        <p class="rc-note">Everyone with a Last contact in the past 7 days. If someone's missing, their Last contact wasn't updated.</p>
+        <div class="rc-scroll">
+          <table class="rc-table" data-source="week_contacts" data-row-key="person">
+            <thead><tr>
+              <th data-field="person">Person</th>
+              <th data-field="last_contact">Last contact</th>
+              <th data-field="stage" class="rc-hide-sm">Stage</th>
+              <th data-field="next_step">Next step</th>
+            </tr></thead>
+            <tbody data-draw="week-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rc-card" id="pipeline-card">
+        <h3 class="rc-card-title">Relationship pipeline</h3>
+        <p class="rc-note">People at each Stage. A tall Target bar with thin bars after it means outreach isn't turning into conversations yet.</p>
+        <div class="rc-bars" data-draw="stages" data-source="stages"></div>
+      </div>
+    </div>
+    <p class="rc-note">For a written retro (what stalled, who went quiet, what to change), ask Claude: "run my weekly RDI retro".</p>
+  </section>
+
   <section class="rc-section" id="rdi">
     <h2 class="rc-h2">RDI timeline to Botha-Chan</h2>
     <div class="rc-card" id="timeline-card">
       <h3 class="rc-card-title">Milestones</h3>
       <p class="rc-note">Each dot is a milestone from the RDI Tracker. Red is past due and not done; blue is next. Tap a dot for details.</p>
-      <div class="rc-timeline" data-draw="timeline" data-source="milestones"></div>
+      <div class="rc-timeline" data-draw="timeline" data-source="milestones_dated"></div>
       <div class="rc-scroll">
-        <table class="rc-table" data-source="milestones" data-row-key="milestone">
+        <table class="rc-table" data-source="milestones_dated" data-row-key="milestone">
           <thead><tr>
             <th data-field="milestone">Milestone</th>
             <th data-field="due">Due</th>
@@ -201,22 +245,144 @@
       <dt>Due in next 7 days</dt><dd>Follow-up date is today or within the next 7 days.</dd>
       <dt>High priority, not started</dt><dd>Priority is High, with no Last contact and no Follow-up date.</dd>
       <dt>Warm</dt><dd>Closeness is 3 (Friendly) or 4 (Advocate).</dd>
-      <dt>Source</dt><dd>Live from your Notion Networking, Company, Market and RDI trackers, read with your own Notion access each time the page opens. Contact info and private notes are never read.</dd>
+      <dt>Source</dt><dd>Live from saved views of your Notion Networking, Company, Market and RDI trackers, read with your own Notion access. Saved-view reads don't count toward Notion's query limit. Contact info and private notes are dropped as the data loads and never shown.</dd>
+      <dt>Days</dt><dd>Counted from today's date on the device you're viewing on.</dd>
     </dl>
   </details>
 </div>
 
 <script>
-  dash.loader('people', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
-  dash.loader('milestones', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
-  dash.loader('companies', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
-  dash.loader('markets', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
+  dash.loader('people', {
+    description: 'Every page of the Networking Tracker view, keeping only the fields the dashboard shows (contact info and notes are dropped)',
+    fn: async ({ answer, call, args }) => {
+      const parse = (x) => (typeof x === 'string' ? JSON.parse(x) : x);
+      let a = parse(answer);
+      if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + (a.error.message || a.error) : ''));
+      let rows = a.results.slice();
+      for (let i = 0; i < 4 && a.has_more && a.next_cursor; i += 1) {
+        a = parse(await call('notion-query-data-sources', { data: { ...args.data, start_cursor: a.next_cursor } }, { poll: false }));
+        rows = rows.concat((a && a.results) || []);
+      }
+      const rank = { High: 1, Medium: 2, Low: 3 };
+      return rows.map((r) => ({
+        person: r['Person'], url: r.url,
+        priority: r['Priority'] || null, prio_rank: rank[r['Priority']] || 4,
+        relevance: r['Relevance'] || null, closeness: r['Closeness'] || null,
+        stage: r['Stage'] || null, channel: r['Channel'] || null, next_step: r['Next step'] || null,
+        last_contact: r['date:Last contact:start'] || null, follow_up: r['date:Follow-up date:start'] || null,
+        expertise: r['Expertise'] || null, orgs: r['Organization'] || null,
+      }));
+    },
+  });
+  dash.loader('milestones', {
+    description: 'RDI Tracker view rows with plain column names',
+    fn: ({ answer }) => {
+      const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+      if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + (a.error.message || a.error) : ''));
+      return a.results
+        .map((r) => ({ milestone: r['Milestone'], url: r.url, phase: r['Phase'] || null, status: r['Status'] || null, due: r['date:Due date:start'] || null, notes: r['Notes'] || null }))
+        .sort((x, y) => String(x.due).localeCompare(String(y.due)));
+    },
+  });
+  dash.loader('companies', {
+    description: 'Company Tracker view rows with plain column names',
+    fn: async ({ answer, call, args }) => {
+      const parse = (x) => (typeof x === 'string' ? JSON.parse(x) : x);
+      let a = parse(answer);
+      if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + (a.error.message || a.error) : ''));
+      let rows = a.results.slice();
+      for (let i = 0; i < 4 && a.has_more && a.next_cursor; i += 1) {
+        a = parse(await call('notion-query-data-sources', { data: { ...args.data, start_cursor: a.next_cursor } }, { poll: false }));
+        rows = rows.concat((a && a.results) || []);
+      }
+      return rows.map((r) => ({ company: r['Company'], url: r.url, category: r['Category'] || null, status: r['Status'] || null, priority: r['Priority'] || null, markets: r['Markets'] || null, potential_employer: r['Potential employer'] || '__NO__' }));
+    },
+  });
+  dash.loader('markets', {
+    description: 'Market Tracker view rows with plain column names',
+    fn: ({ answer }) => {
+      const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+      if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + (a.error.message || a.error) : ''));
+      return a.results.map((r) => ({ market: r['Market'], url: r.url, status: r['Status'] || null, venture_primer: r['Venture primer'] || null, career_primer: r['Career primer'] || null, companies: r['Companies'] || null }));
+    },
+  });
+
+  dash.calc('people_dated', {
+    inputs: ['people'],
+    title: 'People with follow-up timing',
+    description: "Adds days to follow-up, days since contact and a due bucket, counted from today's date.",
+    fn: (people) => {
+      const t = new Date();
+      const today = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      const days = (a, b) => Math.round((Date.parse(a + 'T00:00:00Z') - Date.parse(b + 'T00:00:00Z')) / 86400000);
+      return people
+        .map((p) => {
+          const toFu = p.follow_up ? days(p.follow_up, today) : null;
+          const since = p.last_contact ? days(today, p.last_contact) : null;
+          let bucket = 'later';
+          if (/no pending step/i.test(p.next_step || '')) bucket = 'later';
+          else if (toFu != null && toFu < 0) bucket = 'overdue';
+          else if (toFu != null && toFu <= 7) bucket = 'this_week';
+          else if (toFu == null && since == null && p.priority === 'High') bucket = 'unscheduled';
+          return { ...p, days_to_follow_up: toFu, days_since_contact: since, bucket };
+        })
+        .sort((a, b) => (a.prio_rank - b.prio_rank) || String(a.follow_up).localeCompare(String(b.follow_up)));
+    },
+  });
+
+  dash.calc('milestones_dated', {
+    inputs: ['milestones'],
+    title: 'Milestones with days left',
+    description: "Days from today's date to each milestone's due date.",
+    fn: (milestones) => {
+      const t = new Date();
+      const today = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      return milestones.map((m) => ({ ...m, days_left: m.due ? Math.round((Date.parse(m.due + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000) : null }));
+    },
+  });
+
+  dash.calc('week', {
+    inputs: ['people_dated', 'milestones_dated'],
+    title: 'This week in review',
+    description: 'People contacted in the last 7 days versus the 7 before, follow-ups that slipped, and milestones due in the next 7 days.',
+    fn: (people_dated, milestones_dated) => {
+      const inRange = (d, lo, hi) => d != null && d >= lo && d <= hi;
+      return [{
+        contacted: people_dated.filter((p) => inRange(p.days_since_contact, 0, 6)).length,
+        contacted_prev: people_dated.filter((p) => inRange(p.days_since_contact, 7, 13)).length,
+        slipped: people_dated.filter((p) => p.bucket === 'overdue').length,
+        milestones_next: milestones_dated.filter((m) => m.status !== 'Done' && inRange(m.days_left, 0, 7)).length,
+      }];
+    },
+  });
+
+  dash.calc('week_contacts', {
+    inputs: ['people_dated'],
+    title: 'Conversations this week',
+    description: 'People whose Last contact is within the last 7 days, newest first.',
+    fn: (people_dated) => people_dated
+      .filter((p) => p.days_since_contact != null && p.days_since_contact >= 0 && p.days_since_contact <= 6)
+      .sort((a, b) => String(b.last_contact).localeCompare(String(a.last_contact)))
+      .map((p) => ({ person: p.person, url: p.url, last_contact: p.last_contact, stage: p.stage, next_step: p.next_step })),
+  });
+
+  dash.calc('stages', {
+    inputs: ['people'],
+    title: 'Relationship pipeline',
+    description: 'How many people sit at each Stage, in pipeline order.',
+    fn: (people) => {
+      const order = ['Target', 'Reached out', 'Conversation set', 'Met/Spoke', 'Follow-up', 'Warm/Advocate'];
+      return order.map((stage) => ({ stage, people: people.filter((p) => p.stage === stage).length }));
+    },
+  });
 
   dash.calc('kpis', {
-    inputs: ['people', 'milestones'],
+    inputs: ['people_dated', 'milestones_dated'],
     title: 'Headline counts',
     description: 'Follow-ups grouped by when they are due, the next open milestone, and days to the final milestone.',
-    fn: (people, milestones) => {
+    fn: (people_dated, milestones_dated) => {
+      const people = people_dated;
+      const milestones = milestones_dated;
       const count = (b) => people.filter((p) => p.bucket === b).length;
       const open = milestones.filter((m) => m.status !== 'Done');
       const next = open.filter((m) => m.days_left >= 0).sort((a, b) => a.days_left - b.days_left)[0];
@@ -233,20 +399,20 @@
   });
 
   dash.calc('outreach', {
-    inputs: ['people'],
+    inputs: ['people_dated'],
     title: 'Follow-ups due now',
     description: 'People whose follow-up is overdue or due in the next 7 days, by priority then date.',
-    fn: (people) => people
+    fn: (people_dated) => people_dated
       .filter((p) => p.bucket === 'overdue' || p.bucket === 'this_week')
       .sort((a, b) => (a.prio_rank - b.prio_rank) || String(a.follow_up).localeCompare(String(b.follow_up)))
       .map((p) => ({ person: p.person, url: p.url, next_step: p.next_step, follow_up: p.follow_up, priority: p.priority, closeness: p.closeness, bucket: p.bucket })),
   });
 
   dash.calc('unscheduled', {
-    inputs: ['people'],
+    inputs: ['people_dated'],
     title: 'High priority, not started',
     description: 'High-priority people with no contact logged and no follow-up date.',
-    fn: (people) => people
+    fn: (people_dated) => people_dated
       .filter((p) => p.bucket === 'unscheduled')
       .map((p) => ({ person: p.person, url: p.url, next_step: p.next_step, closeness: p.closeness })),
   });
@@ -359,6 +525,49 @@
   };
   const rowsOf = (id) => { const d = dash.data(id); return d.status === 'ok' && Array.isArray(d.data) ? d.data : []; };
 
+  numberDraw('w-contacted', 'week', 'contacted');
+  numberDraw('w-prev', 'week', 'contacted_prev');
+  numberDraw('w-slipped', 'week', 'slipped');
+  numberDraw('w-ms', 'week', 'milestones_next');
+
+  dash.draw('week-rows', (tbody) => {
+    tbody.replaceChildren();
+    for (const r of rowsOf('week_contacts')) {
+      const tr = document.createElement('tr');
+      linkCell(tr, r.person, r.url);
+      cell(tr, r.last_contact);
+      cell(tr, r.stage, 'rc-hide-sm');
+      cell(tr, r.next_step);
+      tbody.appendChild(tr);
+    }
+  });
+
+  dash.draw('stages', (el) => {
+    el.replaceChildren();
+    const rows = rowsOf('stages');
+    if (!rows.length) return;
+    const max = d3.max(rows, (r) => r.people) || 1;
+    for (const r of rows) {
+      const row = document.createElement('div');
+      row.className = 'rc-bar-row';
+      const label = document.createElement('span');
+      label.className = 'rc-bar-label';
+      label.textContent = r.stage;
+      const track = document.createElement('div');
+      track.className = 'rc-bar-track';
+      const bar = document.createElement('div');
+      bar.className = 'rc-bar-all';
+      bar.style.width = (r.people / max * 100) + '%';
+      bar.style.background = dash.colors[0];
+      track.append(bar);
+      const val = document.createElement('span');
+      val.className = 'rc-bar-val';
+      val.textContent = String(r.people);
+      row.append(label, track, val);
+      el.appendChild(row);
+    }
+  });
+
   dash.draw('outreach-rows', (tbody) => {
     tbody.replaceChildren();
     for (const r of rowsOf('outreach')) {
@@ -386,7 +595,7 @@
 
   dash.draw('milestone-rows', (tbody) => {
     tbody.replaceChildren();
-    for (const r of rowsOf('milestones')) {
+    for (const r of rowsOf('milestones_dated')) {
       const tr = document.createElement('tr');
       linkCell(tr, r.milestone, r.url);
       cell(tr, r.due);
@@ -476,7 +685,7 @@
 
   dash.draw('timeline', (el) => {
     el.replaceChildren();
-    const raw = rowsOf('milestones').filter((r) => r.due);
+    const raw = rowsOf('milestones_dated').filter((r) => r.due);
     if (!raw.length) return;
     const rows = raw.map((r) => ({ ...r, date: new Date(r.due + 'T00:00:00Z') }));
     const today = d3.utcDay.offset(rows[0].date, -rows[0].days_left);
