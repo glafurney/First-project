@@ -1,0 +1,238 @@
+<title>Grant's Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column of triage cards, sticky header with counts + lead filter, action bar inside each card. */
+:root {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --ink: #16202b;
+  --muted: #5d6a78;
+  --line: #dde2e8;
+  --accent: #1f5fd1;
+  --accent-ink: #ffffff;
+  --p1: #c2410c;
+  --p2: #b7791f;
+  --p3: #6b7a8a;
+  --ok: #18794e;
+  --no: #b42318;
+  --font-ui: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141a; --surface: #171e26; --ink: #e6ebf0; --muted: #93a1b0; --line: #2a3440;
+  --accent: #6c9cf0; --accent-ink: #0b1220; --p1: #f08a5d; --p2: #e2b54f; --p3: #8796a6;
+  --ok: #4cc38a; --no: #f2766b; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f141a; --surface: #171e26; --ink: #e6ebf0; --muted: #93a1b0; --line: #2a3440;
+  --accent: #6c9cf0; --accent-ink: #0b1220; --p1: #f08a5d; --p2: #e2b54f; --p3: #8796a6;
+  --ok: #4cc38a; --no: #f2766b; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 16px 10px; display: grid; gap: 10px; border-bottom: 1px solid var(--line); }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.count { font: 500 13px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.count b { color: var(--ink); font-weight: 500; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 500 13px var(--font-ui); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip .n { font-family: var(--font-mono); font-size: 11px; opacity: .7; margin-left: 4px; }
+
+main { display: grid; gap: 10px; padding-top: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 14px 12px; display: grid; gap: 8px; min-width: 0; outline: none; }
+.card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pri { padding: 1px 6px; border-radius: 4px; color: var(--surface); }
+.pri.p1 { background: var(--p1); } .pri.p2 { background: var(--p2); } .pri.p3 { background: var(--p3); }
+.card h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; text-wrap: balance; }
+.sum { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.rec { margin: 0; font-size: 14px; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 10px; }
+.rec b { color: var(--ink); font-weight: 600; }
+details summary { cursor: pointer; font-size: 13px; color: var(--accent); font-weight: 500; }
+pre.draft { white-space: pre-wrap; font: 13px/1.5 var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin: 8px 0 0; overflow-x: auto; }
+.links { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.links a { color: var(--accent); }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding-top: 4px; }
+.actions button { font: 600 14px var(--font-ui); padding: 10px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.actions button.ok { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.actions button.no { color: var(--no); }
+.actions kbd { font: 400 10px var(--font-mono); opacity: .6; margin-left: 4px; }
+button:focus-visible, .chip:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note-box { display: grid; gap: 6px; }
+.note-box textarea { font: 14px var(--font-ui); padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 70px; resize: vertical; }
+.note-box .row { display: flex; gap: 6px; justify-content: flex-end; }
+.note-box button { font: 600 13px var(--font-ui); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.note-box button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.decided { font: 500 12px var(--font-mono); color: var(--muted); }
+.decided .st-approved { color: var(--ok); } .decided .st-rejected { color: var(--no); }
+.empty { text-align: center; color: var(--muted); padding: 48px 12px; display: grid; gap: 6px; }
+.empty b { color: var(--ink); font-size: 16px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; display: flex; gap: 14px; align-items: center; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+.toast button { background: none; border: 0; color: var(--accent); font: 600 14px var(--font-ui); cursor: pointer; }
+.help { font: 12px var(--font-mono); color: var(--muted); text-align: center; padding-top: 18px; }
+@media (hover: none) { .actions kbd, .help { display: none; } }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <h1>Grant's Desk</h1>
+      <span class="count" id="count">Loading…</span>
+    </div>
+    <div class="chips" id="views" role="group" aria-label="View">
+      <button class="chip" data-view="open" aria-pressed="true">Open</button>
+      <button class="chip" data-view="snoozed" aria-pressed="false">Snoozed</button>
+      <button class="chip" data-view="decided" aria-pressed="false">Decided</button>
+    </div>
+    <div class="chips" id="leads" role="group" aria-label="Lead"></div>
+  </header>
+  <main id="list" aria-live="polite">
+    <div class="empty"><b>Connecting to your queue…</b><span>Items from your lead agents show up here.</span></div>
+  </main>
+  <p class="help">j/k move · a approve · r reject · s snooze · n note · e expand</p>
+</div>
+<div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="undo">Undo</button></div>
+
+<script>
+const LEADS = { all: "All", chief: "Chief of staff", inbox: "Inbox & admin", research: "Research & networking", ideas: "Ideas scout" };
+const KINDS = { decision: "Decision", review: "Review", draft: "Draft", idea: "Idea", fyi: "FYI" };
+let items = [], view = "open", lead = "all", sel = 0, noteFor = null, db = null, lastUndo = null, toastTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ago = (iso) => { if (!iso) return ""; const m = Math.round((Date.now() - Date.parse(iso)) / 60000); if (m < 60) return m + "m"; const h = Math.round(m / 60); return h < 48 ? h + "h" : Math.round(h / 24) + "d"; };
+const safeUrl = (u) => /^https:\/\//i.test(u || "") ? u : null;
+
+function inView(it) {
+  const st = it.status || "open";
+  if (view === "open") return st === "open";
+  if (view === "snoozed") return st === "snoozed";
+  return st === "approved" || st === "rejected" || st === "done";
+}
+function visible() {
+  return items.filter(it => inView(it) && (lead === "all" || it.lead === lead))
+    .sort((a, b) => view === "decided"
+      ? (b.decidedAt || "").localeCompare(a.decidedAt || "")
+      : ((a.priority || 3) - (b.priority || 3)) || (a.createdAt || "").localeCompare(b.createdAt || ""));
+}
+
+function renderChips() {
+  const open = items.filter(it => (it.status || "open") === "open");
+  $("leads").innerHTML = Object.entries(LEADS).map(([k, label]) => {
+    const n = k === "all" ? open.length : open.filter(it => it.lead === k).length;
+    return `<button class="chip" data-lead="${k}" aria-pressed="${lead === k}">${label}<span class="n">${n}</span></button>`;
+  }).join("");
+  document.querySelectorAll("#views .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === view));
+  const p1 = open.filter(it => (it.priority || 3) === 1).length;
+  $("count").innerHTML = `<b>${open.length}</b> open · <b>${p1}</b> urgent`;
+}
+
+function render() {
+  renderChips();
+  const list = visible();
+  if (sel >= list.length) sel = Math.max(0, list.length - 1);
+  if (!list.length) {
+    const msg = view === "open" ? ["Queue clear.", "New items from your leads will appear here."] : view === "snoozed" ? ["Nothing snoozed.", ""] : ["No decisions yet.", "Approved and rejected items land here."];
+    $("list").innerHTML = `<div class="empty"><b>${msg[0]}</b><span>${msg[1]}</span></div>`;
+    return;
+  }
+  $("list").innerHTML = list.map((it, i) => {
+    const p = it.priority || 3;
+    const links = (it.links || []).map(l => safeUrl(l.url) ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label || "Link")}</a>` : "").join("");
+    const st = it.status || "open";
+    const actions = st === "open" || st === "snoozed" ? `
+      <div class="actions">
+        <button class="ok" data-act="approved" data-id="${esc(it.id)}">Approve<kbd>a</kbd></button>
+        <button class="no" data-act="rejected" data-id="${esc(it.id)}">Reject<kbd>r</kbd></button>
+        <button data-act="${st === "snoozed" ? "open" : "snoozed"}" data-id="${esc(it.id)}">${st === "snoozed" ? "Unsnooze" : "Snooze"}<kbd>s</kbd></button>
+        <button data-act="note" data-id="${esc(it.id)}">Note<kbd>n</kbd></button>
+      </div>` : `<div class="decided"><span class="st-${esc(st)}">${esc(st)}</span> ${ago(it.decidedAt)} ago${it.processed ? " · picked up by lead" : " · waiting for lead"}${it.note ? ` · “${esc(it.note)}”` : ""}</div>`;
+    const note = noteFor === it.id ? `
+      <div class="note-box">
+        <label for="note-${esc(it.id)}" class="meta">Your note to the lead</label>
+        <textarea id="note-${esc(it.id)}" placeholder="e.g. Approve, but make it shorter and warmer">${esc(it.note || "")}</textarea>
+        <div class="row"><button data-act="cancel-note">Cancel</button><button class="primary" data-act="save-note" data-id="${esc(it.id)}">Send with approve</button><button data-act="save-note-only" data-id="${esc(it.id)}">Send as revise</button></div>
+      </div>` : "";
+    return `<article class="card${i === sel ? " sel" : ""}" tabindex="-1" data-i="${i}">
+      <div class="meta"><span class="pri p${p}">P${p}</span><span>${esc(LEADS[it.lead] || it.lead || "Lead")}</span><span>${esc(KINDS[it.kind] || it.kind || "")}</span><span>${ago(it.createdAt)}</span></div>
+      <h2>${esc(it.title)}</h2>
+      ${it.summary ? `<p class="sum">${esc(it.summary)}</p>` : ""}
+      ${it.recommendation ? `<p class="rec"><b>Recommend:</b> ${esc(it.recommendation)}</p>` : ""}
+      ${it.draft ? `<details${i === sel && it._open ? " open" : ""}><summary>Show draft</summary><pre class="draft">${esc(it.draft)}</pre></details>` : ""}
+      ${links ? `<div class="links">${links}</div>` : ""}
+      ${actions}${note}
+    </article>`;
+  }).join("");
+  if (noteFor) { const t = document.querySelector(".note-box textarea"); t && t.focus(); }
+}
+
+function toast(msg, undo) {
+  lastUndo = undo; $("toastMsg").textContent = msg; $("undo").hidden = !undo; $("toast").hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; lastUndo = null; }, 5000);
+}
+
+async function decide(id, status, note) {
+  const it = items.find(x => x.id === id); if (!it || !db) return;
+  const prev = { status: it.status || "open", decidedAt: it.decidedAt || null, note: it.note || "", processed: !!it.processed };
+  const patch = { status, decidedAt: status === "open" ? null : new Date().toISOString(), processed: false };
+  if (note !== undefined) patch.note = note;
+  try {
+    await db.doc("queue/" + id).update(patch);
+    const label = { approved: "Approved", rejected: "Rejected", snoozed: "Snoozed", open: "Moved back to open", revise: "Sent back for revision" }[status] || "Saved";
+    toast(label, () => db.doc("queue/" + id).update(prev));
+  } catch (e) { toast("Couldn't save. Check your connection and try again."); }
+}
+
+document.addEventListener("click", (e) => {
+  const v = e.target.closest("[data-view]"); if (v) { view = v.dataset.view; sel = 0; noteFor = null; render(); return; }
+  const l = e.target.closest("[data-lead]"); if (l) { lead = l.dataset.lead; sel = 0; render(); return; }
+  const b = e.target.closest("[data-act]"); if (!b) { const c = e.target.closest(".card"); if (c) { sel = +c.dataset.i; markSel(); } return; }
+  const act = b.dataset.act, id = b.dataset.id;
+  if (act === "note") { noteFor = noteFor === id ? null : id; render(); }
+  else if (act === "cancel-note") { noteFor = null; render(); }
+  else if (act === "save-note" || act === "save-note-only") {
+    const t = document.querySelector(".note-box textarea"); const note = t ? t.value.trim() : "";
+    noteFor = null; decide(id, act === "save-note" ? "approved" : "revise", note);
+  } else decide(id, act);
+});
+$("undo").addEventListener("click", () => { if (lastUndo) lastUndo(); $("toast").hidden = true; lastUndo = null; });
+
+function markSel() {
+  document.querySelectorAll(".card").forEach((c, i) => c.classList.toggle("sel", i === sel));
+  const c = document.querySelector(".card.sel"); c && c.scrollIntoView({ block: "nearest" });
+}
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("textarea, input")) { if (e.key === "Escape") { noteFor = null; render(); } return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const list = visible(); const it = list[sel];
+  const k = e.key.toLowerCase();
+  if (k === "j") { sel = Math.min(sel + 1, list.length - 1); markSel(); }
+  else if (k === "k") { sel = Math.max(sel - 1, 0); markSel(); }
+  else if (!it) return;
+  else if (k === "a") decide(it.id, "approved");
+  else if (k === "r") decide(it.id, "rejected");
+  else if (k === "s") decide(it.id, (it.status || "open") === "snoozed" ? "open" : "snoozed");
+  else if (k === "n") { e.preventDefault(); noteFor = it.id; render(); }
+  else if (k === "e") { const d = document.querySelector(".card.sel details"); if (d) d.open = !d.open; }
+  else return;
+});
+
+(async () => {
+  render();
+  db = await window.claude?.use?.("db");
+  if (!db) { $("list").innerHTML = `<div class="empty"><b>Queue unavailable here.</b><span>Open this page on claude.ai while signed in as the owner.</span></div>`; $("count").textContent = ""; return; }
+  const timer = setTimeout(() => { $("count").textContent = "Can't reach the queue yet…"; }, 10000);
+  db.collection("queue").onSnapshot((snap) => {
+    if (!snap.metadata.fromCache) clearTimeout(timer);
+    items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  }, (err) => { clearTimeout(timer); $("count").textContent = "Queue stopped syncing. Reload to reconnect."; });
+})();
+</script>
