@@ -1,11 +1,16 @@
-# Grant's agent desk
+# RDI Command Center
 
-One lead agent per area, a chief of staff above them, and one prioritized queue for everything Grant has to decide.
+A phone-friendly dashboard for Grant's RDI research and networking, read live from Notion.
 
-- **Queue (phone web app):** https://claude.ai/artifact/YJhmH2EtyXmB1MWPFKy7hm. Source in `queue/index.html`. Tap or use j/k/a/r/s/n.
-- **Brain:** `brain/preferences.md`. Every agent reads it first; the chief of staff updates it from your decisions.
-- **Rules for agents:** `agents/protocol.md`.
-- **Leads:** `agents/inbox.md` (on), `agents/research.md` (planned), `agents/ideas.md` (planned).
-- **Chief of staff:** `agents/chief-of-staff.md`.
+- **Dashboard:** https://claude.ai/artifact/EQXhhn8o1WsyG3oQsLyW1i
+- **Sources (live, read-only):** Networking Tracker, Company Tracker, Market Tracker, RDI Tracker in Notion. Contact info and private notes are never read.
+- **Reports shelf:** `dashboard/reports.json`. It's a fixed list, since the takeaways are written summaries. Ask Claude to add new reports.
+- **Page source:** `dashboard/index.html` (a copy; the live page is stored in the dashboard itself).
 
-Nothing is sent, posted or paid without an approved queue item.
+## What it answers
+1. Who to reach out to: overdue and due-this-week follow-ups, plus high-priority contacts never started.
+2. Where RDI stands: milestones to the Botha-Chan application (Feb 23).
+3. Where the network is thin: contacts by market, potential employers, expertise coverage.
+4. The research reports, linked to Notion.
+
+`archive/agent-desk/` holds the earlier agent-queue experiment (paused).

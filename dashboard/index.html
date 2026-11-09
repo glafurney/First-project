@@ -1,0 +1,531 @@
+<meta name="dash-one-writer">
+<style>
+  .rc { display: grid; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+  .rc-head { display: grid; gap: var(--cds-gap-sm); }
+  .rc-title { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); }
+  .rc-lede { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-body); max-width: 60ch; }
+  .rc .rc-lede b { color: var(--color-fg); font-weight: 600; }
+  .rc-tiles { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
+  .rc-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-xs); align-content: start; }
+  .rc-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .rc-tile-num { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; min-height: 1.2em; }
+  .rc-tile-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .rc-bad { color: var(--color-bad); }
+  .rc-section { display: grid; gap: var(--cds-gap-md); }
+  .rc-h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+  .rc-grid { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+  .rc-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; align-content: start; }
+  .rc-card-title { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+  .rc-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .rc-scroll { overflow-x: auto; max-height: 28rem; overflow-y: auto; }
+  .rc-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .rc-table th { text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); position: sticky; top: 0; background: var(--color-panel); white-space: nowrap; }
+  .rc-table td { padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+  .rc-table td.rc-num, .rc-table th.rc-num { text-align: right; }
+  .rc-table a { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 2px; }
+  .rc-table tr.rc-overdue td:first-child { box-shadow: inset 3px 0 0 var(--color-bad); }
+  .rc-table tr.rc-week td:first-child { box-shadow: inset 3px 0 0 var(--color-warn); }
+  .rc-pill { display: inline-block; padding: 0 var(--cds-pad-xs); border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); white-space: nowrap; }
+  .rc-pill.rc-high { color: var(--color-bad); }
+  .rc-pill.rc-medium { color: var(--color-warn); }
+  .rc-pill.rc-done { color: var(--color-ok); }
+  .rc-timeline { position: relative; min-height: 104px; }
+  .rc-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); max-width: 16rem; z-index: 2; }
+  .rc-tip .rc-tip-date { color: var(--cds-text-secondary); }
+  .rc-bars { display: grid; gap: var(--cds-gap-xs); min-height: 12rem; }
+  .rc-bar-row { display: grid; grid-template-columns: minmax(6rem, 9rem) 1fr auto; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); }
+  .rc-bar-label { overflow-wrap: anywhere; }
+  .rc-bar-track { position: relative; height: 0.75rem; }
+  .rc-bar-all, .rc-bar-warm { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--cds-radius); }
+  .rc-bar-all { background: var(--cds-chart-muted); }
+  .rc-bar-val { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rc-legend { display: flex; gap: var(--cds-gap-md); flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; padding: 0; list-style: none; }
+  .rc-legend i { display: inline-block; width: 0.625rem; height: 0.625rem; border-radius: 2px; margin-right: var(--cds-gap-xs); vertical-align: -1px; }
+  .rc-sw-all { background: var(--cds-chart-muted); }
+  .rc-sw-warm { background: var(--color-ok); }
+  .rc-reports { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); min-height: 6rem; }
+  .rc-report { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: grid; gap: var(--cds-gap-xs); align-content: start; }
+  .rc-report a { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+  .rc-report-meta { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .rc-report p { margin: 0; font-size: var(--cds-font-size-caption); }
+  .rc details { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .rc details dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--cds-gap-xs) var(--cds-gap-md); }
+  .rc details dt { color: var(--color-fg); }
+  .rc details dd { margin: 0; }
+  [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+  [data-dash-source-state=empty] { color: transparent; }
+  @media (max-width: 560px) { .rc-hide-sm { display: none; } }
+</style>
+
+<div class="rc">
+  <header class="rc-head" id="top">
+    <h1 class="rc-title">RDI Command Center</h1>
+    <p class="rc-lede"><b data-draw="k-overdue" data-source="kpis" data-field="overdue" data-row="0">—</b> follow-ups are overdue and <b data-draw="k-week" data-source="kpis" data-field="this_week" data-row="0">—</b> are due in the next 7 days. Next RDI milestone: <b data-draw="k-next" data-source="kpis" data-field="next_milestone" data-row="0">—</b>, due in <b data-draw="k-nextdays" data-source="kpis" data-field="next_days" data-row="0">—</b> days.</p>
+  </header>
+
+  <div class="rc-tiles" id="headline" data-fetchpriority="high">
+    <div class="rc-tile">
+      <span class="rc-tile-label">Overdue follow-ups</span>
+      <span class="rc-tile-num rc-bad dash-skeleton" data-draw="t-overdue" data-source="kpis" data-field="overdue" data-row="0">—</span>
+      <span class="rc-tile-note">Follow-up date already passed</span>
+    </div>
+    <div class="rc-tile">
+      <span class="rc-tile-label">Due in next 7 days</span>
+      <span class="rc-tile-num dash-skeleton" data-draw="t-week" data-source="kpis" data-field="this_week" data-row="0">—</span>
+      <span class="rc-tile-note">Follow-up date today through next week</span>
+    </div>
+    <div class="rc-tile">
+      <span class="rc-tile-label">High priority, not started</span>
+      <span class="rc-tile-num dash-skeleton" data-draw="t-unsched" data-source="kpis" data-field="unscheduled" data-row="0">—</span>
+      <span class="rc-tile-note">No contact and no follow-up date yet</span>
+    </div>
+    <div class="rc-tile">
+      <span class="rc-tile-label">Days to Botha-Chan</span>
+      <span class="rc-tile-num dash-skeleton" data-draw="t-deadline" data-source="kpis" data-field="deadline_days" data-row="0">—</span>
+      <span class="rc-tile-note">Application due Feb 23, 9am PST</span>
+    </div>
+  </div>
+
+  <section class="rc-section" id="outreach">
+    <h2 class="rc-h2">Who to reach out to</h2>
+    <div class="rc-grid">
+      <div class="rc-card" id="outreach-due">
+        <h3 class="rc-card-title">Due now</h3>
+        <p class="rc-note">Overdue (red) or due in the next 7 days (amber), highest priority first. Names open the Notion page.</p>
+        <div class="rc-scroll">
+          <table class="rc-table" data-source="outreach" data-row-key="person">
+            <thead><tr>
+              <th data-field="person">Person</th>
+              <th data-field="next_step">Next step</th>
+              <th data-field="follow_up">Follow-up</th>
+              <th data-field="priority" class="rc-hide-sm">Priority</th>
+              <th data-field="closeness" class="rc-hide-sm">Closeness</th>
+            </tr></thead>
+            <tbody data-draw="outreach-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rc-card" id="outreach-unscheduled">
+        <h3 class="rc-card-title">High priority, not started</h3>
+        <p class="rc-note">Core contacts with no contact logged and no follow-up date. Give each a date or drop the priority.</p>
+        <div class="rc-scroll">
+          <table class="rc-table" data-source="unscheduled" data-row-key="person">
+            <thead><tr>
+              <th data-field="person">Person</th>
+              <th data-field="next_step">Next step</th>
+              <th data-field="closeness" class="rc-hide-sm">Closeness</th>
+            </tr></thead>
+            <tbody data-draw="unscheduled-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rc-section" id="rdi">
+    <h2 class="rc-h2">RDI timeline to Botha-Chan</h2>
+    <div class="rc-card" id="timeline-card">
+      <h3 class="rc-card-title">Milestones</h3>
+      <p class="rc-note">Each dot is a milestone from the RDI Tracker. Red is past due and not done; blue is next. Tap a dot for details.</p>
+      <div class="rc-timeline" data-draw="timeline" data-source="milestones"></div>
+      <div class="rc-scroll">
+        <table class="rc-table" data-source="milestones" data-row-key="milestone">
+          <thead><tr>
+            <th data-field="milestone">Milestone</th>
+            <th data-field="due">Due</th>
+            <th data-field="days_left" class="rc-num">Days left</th>
+            <th data-field="status">Status</th>
+            <th data-field="phase" class="rc-hide-sm">Phase</th>
+          </tr></thead>
+          <tbody data-draw="milestone-rows"></tbody>
+        </table>
+      </div>
+      <p class="rc-note">Rubric scores aren't tracked anywhere yet. Once the January deep dive scores opportunities out of 145 in Notion, they can go here.</p>
+    </div>
+  </section>
+
+  <section class="rc-section" id="network">
+    <h2 class="rc-h2">Where the network is thin</h2>
+    <div class="rc-grid">
+      <div class="rc-card" id="coverage-card">
+        <h3 class="rc-card-title">Contacts by market</h3>
+        <p class="rc-note">People linked to a market's companies. Warm means Closeness 3 or 4; cold core means Relevance 3 and Closeness 1.</p>
+        <div class="rc-scroll">
+          <table class="rc-table" data-source="coverage" data-row-key="market">
+            <thead><tr>
+              <th data-field="market">Market</th>
+              <th data-field="companies" class="rc-num">Companies</th>
+              <th data-field="contacts" class="rc-num">Contacts</th>
+              <th data-field="warm" class="rc-num">Warm</th>
+              <th data-field="cold_core" class="rc-num">Cold core</th>
+              <th data-field="venture_primer" class="rc-hide-sm">Venture primer</th>
+            </tr></thead>
+            <tbody data-draw="coverage-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rc-card" id="employers-card">
+        <h3 class="rc-card-title">Potential employers</h3>
+        <p class="rc-note">Companies marked as potential employers, and who you know there.</p>
+        <div class="rc-scroll">
+          <table class="rc-table" data-source="employers" data-row-key="company">
+            <thead><tr>
+              <th data-field="company">Company</th>
+              <th data-field="contacts" class="rc-num">Contacts</th>
+              <th data-field="warm" class="rc-num">Warm</th>
+              <th data-field="names" class="rc-hide-sm">Who</th>
+            </tr></thead>
+            <tbody data-draw="employer-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rc-card" id="expertise-card">
+        <h3 class="rc-card-title">Who knows what</h3>
+        <p class="rc-note">People per Expertise tag, with the warm share. Short or pale bars are the gaps.</p>
+        <ul class="rc-legend"><li><i class="rc-sw-all"></i>All contacts</li><li><i class="rc-sw-warm"></i>Warm</li></ul>
+        <div class="rc-bars" data-draw="expertise" data-source="expertise"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rc-section" id="reports">
+    <h2 class="rc-h2">Research reports</h2>
+    <div class="rc-reports" data-draw="reports" data-source="reports"></div>
+    <p class="rc-note">The takeaways are short summaries written by Claude. Open a report for the full text in Notion.</p>
+  </section>
+
+  <details>
+    <summary>How these numbers are worked out</summary>
+    <dl>
+      <dt>Overdue</dt><dd>Follow-up date is before today. People whose next step says "no pending step" are left out.</dd>
+      <dt>Due in next 7 days</dt><dd>Follow-up date is today or within the next 7 days.</dd>
+      <dt>High priority, not started</dt><dd>Priority is High, with no Last contact and no Follow-up date.</dd>
+      <dt>Warm</dt><dd>Closeness is 3 (Friendly) or 4 (Advocate).</dd>
+      <dt>Source</dt><dd>Live from your Notion Networking, Company, Market and RDI trackers, read with your own Notion access each time the page opens. Contact info and private notes are never read.</dd>
+    </dl>
+  </details>
+</div>
+
+<script>
+  dash.loader('people', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
+  dash.loader('milestones', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
+  dash.loader('companies', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
+  dash.loader('markets', { description: 'Notion query results as rows', fn: ({ answer }) => { const a = typeof answer === 'string' ? JSON.parse(answer) : answer; if (!a || !Array.isArray(a.results)) throw new Error('Notion returned no results' + (a && a.error ? ': ' + a.error : '')); return a.results; } });
+
+  dash.calc('kpis', {
+    inputs: ['people', 'milestones'],
+    title: 'Headline counts',
+    description: 'Follow-ups grouped by when they are due, the next open milestone, and days to the final milestone.',
+    fn: (people, milestones) => {
+      const count = (b) => people.filter((p) => p.bucket === b).length;
+      const open = milestones.filter((m) => m.status !== 'Done');
+      const next = open.filter((m) => m.days_left >= 0).sort((a, b) => a.days_left - b.days_left)[0];
+      const last = milestones.slice().sort((a, b) => (a.due < b.due ? 1 : -1))[0];
+      return [{
+        overdue: count('overdue'),
+        this_week: count('this_week'),
+        unscheduled: count('unscheduled'),
+        next_milestone: next ? next.milestone : null,
+        next_days: next ? next.days_left : null,
+        deadline_days: last ? last.days_left : null,
+      }];
+    },
+  });
+
+  dash.calc('outreach', {
+    inputs: ['people'],
+    title: 'Follow-ups due now',
+    description: 'People whose follow-up is overdue or due in the next 7 days, by priority then date.',
+    fn: (people) => people
+      .filter((p) => p.bucket === 'overdue' || p.bucket === 'this_week')
+      .sort((a, b) => (a.prio_rank - b.prio_rank) || String(a.follow_up).localeCompare(String(b.follow_up)))
+      .map((p) => ({ person: p.person, url: p.url, next_step: p.next_step, follow_up: p.follow_up, priority: p.priority, closeness: p.closeness, bucket: p.bucket })),
+  });
+
+  dash.calc('unscheduled', {
+    inputs: ['people'],
+    title: 'High priority, not started',
+    description: 'High-priority people with no contact logged and no follow-up date.',
+    fn: (people) => people
+      .filter((p) => p.bucket === 'unscheduled')
+      .map((p) => ({ person: p.person, url: p.url, next_step: p.next_step, closeness: p.closeness })),
+  });
+
+  dash.calc('coverage', {
+    inputs: ['markets', 'companies', 'people'],
+    title: 'Contacts by market',
+    description: 'For each market, its companies and the people linked to them, split by warmth.',
+    fn: (markets, companies, people) => {
+      const list = (s) => { try { return JSON.parse(s || '[]') || []; } catch (e) { return []; } };
+      return markets.map((m) => {
+        const ids = list(m.companies);
+        const ppl = people.filter((p) => list(p.orgs).some((o) => ids.includes(o)));
+        return {
+          market: m.market,
+          url: m.url,
+          companies: companies.filter((c) => ids.includes(c.url)).length,
+          contacts: ppl.length,
+          warm: ppl.filter((p) => /^[34]/.test(p.closeness || '')).length,
+          cold_core: ppl.filter((p) => /^3/.test(p.relevance || '') && /^1/.test(p.closeness || '')).length,
+          venture_primer: m.venture_primer,
+        };
+      });
+    },
+  });
+
+  dash.calc('employers', {
+    inputs: ['companies', 'people'],
+    title: 'Potential employers',
+    description: 'Companies marked Potential employer, with the people linked to each.',
+    fn: (companies, people) => {
+      const list = (s) => { try { return JSON.parse(s || '[]') || []; } catch (e) { return []; } };
+      return companies
+        .filter((c) => c.potential_employer === '__YES__')
+        .map((c) => {
+          const ppl = people.filter((p) => list(p.orgs).includes(c.url));
+          return { company: c.company, url: c.url, contacts: ppl.length, warm: ppl.filter((p) => /^[34]/.test(p.closeness || '')).length, names: ppl.map((p) => p.person).join(', ') };
+        })
+        .sort((a, b) => b.contacts - a.contacts);
+    },
+  });
+
+  dash.calc('expertise', {
+    inputs: ['people'],
+    title: 'People per expertise',
+    description: 'How many people carry each Expertise tag, and how many of them are warm.',
+    fn: (people) => {
+      const list = (s) => { try { return JSON.parse(s || '[]') || []; } catch (e) { return []; } };
+      const tags = {};
+      for (const p of people) {
+        for (const t of list(p.expertise)) {
+          if (!tags[t]) tags[t] = { expertise: t, people: 0, warm: 0 };
+          tags[t].people += 1;
+          if (/^[34]/.test(p.closeness || '')) tags[t].warm += 1;
+        }
+      }
+      return Object.values(tags).sort((a, b) => (b.people - a.people) || a.expertise.localeCompare(b.expertise));
+    },
+  });
+</script>
+
+<script>
+  const first = (id, field) => {
+    const d = dash.data(id);
+    return d.status === 'ok' && Array.isArray(d.data) && d.data[0] ? d.data[0][field] : null;
+  };
+  const numberDraw = (name, id, field) => dash.draw(name, (el) => {
+    const d = dash.data(id);
+    const v = first(id, field);
+    el.textContent = v == null ? '—' : String(v);
+    if (d.status !== 'loading') el.classList.remove('dash-skeleton');
+  });
+  numberDraw('k-overdue', 'kpis', 'overdue');
+  numberDraw('k-week', 'kpis', 'this_week');
+  numberDraw('k-next', 'kpis', 'next_milestone');
+  numberDraw('k-nextdays', 'kpis', 'next_days');
+  numberDraw('t-overdue', 'kpis', 'overdue');
+  numberDraw('t-week', 'kpis', 'this_week');
+  numberDraw('t-unsched', 'kpis', 'unscheduled');
+  numberDraw('t-deadline', 'kpis', 'deadline_days');
+
+  const cell = (tr, text, cls) => {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.textContent = text == null ? '' : String(text);
+    tr.appendChild(td);
+    return td;
+  };
+  const linkCell = (tr, text, url) => {
+    const td = document.createElement('td');
+    const ok = typeof url === 'string' && /^https:\/\/(app\.notion\.com|www\.notion\.so)\//.test(url);
+    if (ok) {
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = text;
+      td.appendChild(a);
+    } else td.textContent = text;
+    tr.appendChild(td);
+  };
+  const pill = (tr, text, cls) => {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    if (text) {
+      const s = document.createElement('span');
+      s.className = 'rc-pill ' + 'rc-' + String(text).toLowerCase().replace(/[^a-z]+/g, '');
+      s.textContent = text;
+      td.appendChild(s);
+    }
+    tr.appendChild(td);
+  };
+  const rowsOf = (id) => { const d = dash.data(id); return d.status === 'ok' && Array.isArray(d.data) ? d.data : []; };
+
+  dash.draw('outreach-rows', (tbody) => {
+    tbody.replaceChildren();
+    for (const r of rowsOf('outreach')) {
+      const tr = document.createElement('tr');
+      tr.className = r.bucket === 'overdue' ? 'rc-overdue' : 'rc-week';
+      linkCell(tr, r.person, r.url);
+      cell(tr, r.next_step);
+      cell(tr, r.follow_up);
+      pill(tr, r.priority, 'rc-hide-sm');
+      cell(tr, r.closeness, 'rc-hide-sm');
+      tbody.appendChild(tr);
+    }
+  });
+
+  dash.draw('unscheduled-rows', (tbody) => {
+    tbody.replaceChildren();
+    for (const r of rowsOf('unscheduled')) {
+      const tr = document.createElement('tr');
+      linkCell(tr, r.person, r.url);
+      cell(tr, r.next_step);
+      cell(tr, r.closeness, 'rc-hide-sm');
+      tbody.appendChild(tr);
+    }
+  });
+
+  dash.draw('milestone-rows', (tbody) => {
+    tbody.replaceChildren();
+    for (const r of rowsOf('milestones')) {
+      const tr = document.createElement('tr');
+      linkCell(tr, r.milestone, r.url);
+      cell(tr, r.due);
+      const late = r.status !== 'Done' && r.days_left < 0;
+      cell(tr, r.days_left, 'rc-num' + (late ? ' rc-bad' : ''));
+      pill(tr, r.status);
+      cell(tr, r.phase, 'rc-hide-sm');
+      tbody.appendChild(tr);
+    }
+  });
+
+  dash.draw('coverage-rows', (tbody) => {
+    tbody.replaceChildren();
+    for (const r of rowsOf('coverage')) {
+      const tr = document.createElement('tr');
+      linkCell(tr, r.market, r.url);
+      cell(tr, r.companies, 'rc-num');
+      cell(tr, r.contacts, 'rc-num');
+      cell(tr, r.warm, 'rc-num');
+      cell(tr, r.cold_core, 'rc-num');
+      cell(tr, r.venture_primer, 'rc-hide-sm');
+      tbody.appendChild(tr);
+    }
+  });
+
+  dash.draw('employer-rows', (tbody) => {
+    tbody.replaceChildren();
+    for (const r of rowsOf('employers')) {
+      const tr = document.createElement('tr');
+      linkCell(tr, r.company, r.url);
+      cell(tr, r.contacts, 'rc-num');
+      cell(tr, r.warm, 'rc-num');
+      cell(tr, r.names, 'rc-hide-sm');
+      tbody.appendChild(tr);
+    }
+  });
+
+  dash.draw('expertise', (el) => {
+    el.replaceChildren();
+    const rows = rowsOf('expertise');
+    if (!rows.length) return;
+    const max = d3.max(rows, (r) => r.people) || 1;
+    for (const r of rows) {
+      const row = document.createElement('div');
+      row.className = 'rc-bar-row';
+      const label = document.createElement('span');
+      label.className = 'rc-bar-label';
+      label.textContent = r.expertise;
+      const track = document.createElement('div');
+      track.className = 'rc-bar-track';
+      const all = document.createElement('div');
+      all.className = 'rc-bar-all';
+      all.style.width = (r.people / max * 100) + '%';
+      const warm = document.createElement('div');
+      warm.className = 'rc-bar-warm';
+      warm.style.width = (r.warm / max * 100) + '%';
+      warm.style.background = 'var(--color-ok)';
+      track.append(all, warm);
+      const val = document.createElement('span');
+      val.className = 'rc-bar-val';
+      val.textContent = r.people + ' · ' + r.warm + ' warm';
+      row.append(label, track, val);
+      el.appendChild(row);
+    }
+  });
+
+  dash.draw('reports', (el) => {
+    el.replaceChildren();
+    const fmt = d3.utcFormat('%b %-d, %Y');
+    for (const r of rowsOf('reports')) {
+      const card = document.createElement('article');
+      card.className = 'rc-report';
+      const ok = typeof r.url === 'string' && /^https:\/\/(app\.notion\.com|www\.notion\.so)\//.test(r.url);
+      const title = document.createElement(ok ? 'a' : 'span');
+      if (ok) { title.href = r.url; title.target = '_blank'; title.rel = 'noopener'; }
+      title.textContent = r.report;
+      const meta = document.createElement('span');
+      meta.className = 'rc-report-meta';
+      const dt = r.date ? new Date(r.date + 'T00:00:00Z') : null;
+      meta.textContent = [r.kind, r.market, dt && !isNaN(dt) ? fmt(dt) : null].filter(Boolean).join(' · ');
+      const p = document.createElement('p');
+      p.textContent = r.takeaway;
+      card.append(title, meta, p);
+      el.appendChild(card);
+    }
+  });
+
+  dash.draw('timeline', (el) => {
+    el.replaceChildren();
+    const raw = rowsOf('milestones').filter((r) => r.due);
+    if (!raw.length) return;
+    const rows = raw.map((r) => ({ ...r, date: new Date(r.due + 'T00:00:00Z') }));
+    const today = d3.utcDay.offset(rows[0].date, -rows[0].days_left);
+    const open = rows.filter((r) => r.status !== 'Done');
+    const next = open.filter((r) => r.days_left >= 0).sort((a, b) => a.days_left - b.days_left)[0];
+    const lo = d3.utcDay.offset(d3.min([today, rows[0].date]), -7);
+    const hi = d3.utcDay.offset(d3.max(rows, (r) => r.date), 7);
+    const W = Math.max(280, el.clientWidth || 600);
+    const H = 96;
+    const m = { l: 8, r: 8, t: 26, b: 24 };
+    const x = d3.scaleUtc([lo, hi], [m.l, W - m.r]);
+    const y = m.t + (H - m.t - m.b) / 2;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'RDI milestones over time');
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y).attr('y2', y).style('stroke', 'var(--cds-chart-axis)').attr('stroke-width', 1);
+    const months = x.ticks(d3.utcMonth.every(1));
+    const tickFmt = d3.utcFormat('%b');
+    const g = svg.append('g');
+    for (const t of months) {
+      g.append('line').attr('x1', x(t)).attr('x2', x(t)).attr('y1', y - 4).attr('y2', y + 4).style('stroke', 'var(--cds-chart-grid)');
+      g.append('text').attr('x', x(t)).attr('y', H - 6).attr('text-anchor', 'middle').style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text(tickFmt(t));
+    }
+    const tx = x(today);
+    svg.append('line').attr('x1', tx).attr('x2', tx).attr('y1', m.t - 6).attr('y2', H - m.b + 2).style('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '3 3');
+    svg.append('text').attr('x', tx).attr('y', m.t - 10).attr('text-anchor', tx < W / 2 ? 'start' : 'end').style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text('Today');
+    const colorOf = (r) => r.status === 'Done' ? 'var(--color-ok)' : r.days_left < 0 ? 'var(--color-bad)' : (next && r.milestone === next.milestone) ? dash.colors[0] : 'var(--cds-chart-muted)';
+    const tip = document.createElement('div');
+    tip.className = 'rc-tip';
+    tip.hidden = true;
+    el.appendChild(tip);
+    const fmt = d3.utcFormat('%b %-d');
+    const show = (event, r) => {
+      tip.replaceChildren();
+      const d1 = document.createElement('div'); d1.className = 'rc-tip-date'; d1.textContent = fmt(r.date) + ' · ' + r.status;
+      const d2 = document.createElement('div'); d2.textContent = r.milestone;
+      tip.append(d1, d2);
+      tip.hidden = false;
+      const box = el.getBoundingClientRect();
+      const px = x(r.date) / W * box.width;
+      const tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(box.width - tw, px - tw / 2)) + 'px';
+      tip.style.top = '0px';
+    };
+    svg.append('g').selectAll('circle').data(rows).join('circle')
+      .attr('cx', (r) => x(r.date)).attr('cy', y).attr('r', 6)
+      .style('fill', colorOf).style('stroke', 'var(--color-panel)').attr('stroke-width', 2)
+      .style('cursor', 'pointer')
+      .on('pointerenter', show).on('click', show)
+      .on('pointerleave', () => { tip.hidden = true; });
+    const end = rows[rows.length - 1];
+    svg.append('text').attr('x', x(end.date)).attr('y', m.t - 10).attr('text-anchor', 'end').style('fill', 'var(--color-fg)').style('font-size', 'var(--cds-font-size-caption)').text('Deadline');
+  });
+</script>
